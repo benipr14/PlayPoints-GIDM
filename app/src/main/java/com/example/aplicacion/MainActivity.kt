@@ -45,6 +45,8 @@ class MainActivity : ComponentActivity() {
     private val mensajePantallaRepository = MensajePantallaRepository()
     private val limpiezaFirestoreRepository = LimpiezaFirestoreRepository()
     private var uiMessage by mutableStateOf("Pulsa un botón para continuar")
+    private var usuariosLecturaCompletaTexto by mutableStateOf("Lectura completa de usuarios: (sin datos)")
+    private var usuariosLecturaFiltradaTexto by mutableStateOf("Lectura filtrada (cooldownActivo=true): (sin datos)")
     private var isLoading by mutableStateOf(false)
     private var ultimoUsuarioId by mutableStateOf<String?>(null)
     private var ultimaLigaId by mutableStateOf<String?>(null)
@@ -159,6 +161,8 @@ class MainActivity : ComponentActivity() {
                             Text(text = "Vaciar base de datos")
                         }
 
+                        Text(text = usuariosLecturaCompletaTexto)
+                        Text(text = usuariosLecturaFiltradaTexto)
                         Text(text = uiMessage)
                     }
                 }
@@ -201,7 +205,7 @@ class MainActivity : ComponentActivity() {
             role = "user",
             fechaCreacion = fechaCreacionActual,
             cooldownHasta = "6 de abril de 2026 a las 6:14:47 p.m. UTC+2",
-            cooldownActivo = true,
+            cooldownActivo = false,
             puntos = 1200
         )
 
@@ -211,20 +215,32 @@ class MainActivity : ComponentActivity() {
                     ultimoUsuarioId = documentIdGenerado
                     usuarioRepository.obtenerTodosLosUsuarios { lecturaCompleta ->
                         lecturaCompleta
-                            .onSuccess {
+                            .onSuccess { usuariosCompletos ->
+                                usuariosLecturaCompletaTexto = construirResumenUsuarios(
+                                    titulo = "Lectura completa de usuarios",
+                                    usuarios = usuariosCompletos
+                                )
                                 usuarioRepository.obtenerUsuariosConCooldownActivo(true) { lecturaFiltrada ->
                                     lecturaFiltrada
-                                        .onSuccess {
+                                        .onSuccess { usuariosFiltrados ->
+                                            usuariosLecturaFiltradaTexto = construirResumenUsuarios(
+                                                titulo = "Lectura filtrada (cooldownActivo=true)",
+                                                usuarios = usuariosFiltrados
+                                            )
                                             isLoading = false
                                             uiMessage = "Usuario agregado correctamente: $documentIdGenerado"
                                         }
                                         .onFailure { error ->
+                                            usuariosLecturaFiltradaTexto =
+                                                "Lectura filtrada (cooldownActivo=true): error -> ${error.message}"
                                             isLoading = false
                                             uiMessage = "Error: ${error.message}"
                                         }
                                 }
                             }
                             .onFailure { error ->
+                                usuariosLecturaCompletaTexto =
+                                    "Lectura completa de usuarios: error -> ${error.message}"
                                 isLoading = false
                                 uiMessage = "Error: ${error.message}"
                             }
@@ -235,6 +251,19 @@ class MainActivity : ComponentActivity() {
                     uiMessage = "Error: ${error.message}"
                 }
         }
+    }
+
+    private fun construirResumenUsuarios(titulo: String, usuarios: List<Usuario>): String {
+        if (usuarios.isEmpty()) {
+            return "$titulo: 0 usuarios"
+        }
+
+        val detalle = usuarios.joinToString(separator = " | ") { usuario ->
+            val idVisible = usuario.usuarioId.ifBlank { usuario.id }
+            "$idVisible (${usuario.nombre}, puntos=${usuario.puntos}, cooldown=${usuario.cooldownActivo})"
+        }
+
+        return "$titulo: ${usuarios.size} usuarios -> $detalle"
     }
 
     private fun agregarCooldownDosMinutos() {
@@ -250,8 +279,39 @@ class MainActivity : ComponentActivity() {
         usuarioRepository.actualizarCooldownUsuario(usuarioId, cooldownHasta) { resultado ->
             resultado
                 .onSuccess {
-                    isLoading = false
-                    uiMessage = "Cooldown aplicado correctamente a $usuarioId"
+                    usuarioRepository.obtenerTodosLosUsuarios { lecturaCompleta ->
+                        lecturaCompleta
+                            .onSuccess { usuariosCompletos ->
+                                usuariosLecturaCompletaTexto = construirResumenUsuarios(
+                                    titulo = "Lectura completa de usuarios",
+                                    usuarios = usuariosCompletos
+                                )
+
+                                usuarioRepository.obtenerUsuariosConCooldownActivo(true) { lecturaFiltrada ->
+                                    lecturaFiltrada
+                                        .onSuccess { usuariosFiltrados ->
+                                            usuariosLecturaFiltradaTexto = construirResumenUsuarios(
+                                                titulo = "Lectura filtrada (cooldownActivo=true)",
+                                                usuarios = usuariosFiltrados
+                                            )
+                                            isLoading = false
+                                            uiMessage = "Cooldown aplicado correctamente a $usuarioId"
+                                        }
+                                        .onFailure { error ->
+                                            usuariosLecturaFiltradaTexto =
+                                                "Lectura filtrada (cooldownActivo=true): error -> ${error.message}"
+                                            isLoading = false
+                                            uiMessage = "Error: ${error.message}"
+                                        }
+                                }
+                            }
+                            .onFailure { error ->
+                                usuariosLecturaCompletaTexto =
+                                    "Lectura completa de usuarios: error -> ${error.message}"
+                                isLoading = false
+                                uiMessage = "Error: ${error.message}"
+                            }
+                    }
                 }
                 .onFailure { error ->
                     isLoading = false
