@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "1023663064940",
+    "firebase_url": "https://gidm-ba668-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "gidm-ba668",
+    "storage_bucket": "gidm-ba668.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1023663064940:android:ffc71ab2f69bc51585d549",
+        "android_client_info": {
+          "package_name": "com.example.androidmaster"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjFo2BSYy6IB81A97CombceJXysER4PmU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1023663064940:android:696e538d835cbdda85d549",
+        "android_client_info": {
+          "package_name": "com.example.aplicacion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjFo2BSYy6IB81A97CombceJXysER4PmU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
