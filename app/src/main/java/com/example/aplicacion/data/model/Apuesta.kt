@@ -5,7 +5,7 @@ import com.google.firebase.firestore.DocumentId
 data class Apuesta(
     @DocumentId
     val id: String = "",
-    val patidoId: String = "",
+    val partidoId: String = "",
     val competicionId: String = "",
     val equipoLocal: String = "",
     val equipoVisitante: String = "",
@@ -18,7 +18,7 @@ data class Apuesta(
 ) {
     fun toFirestoreMap(): Map<String, Any> {
         return mapOf(
-            "patidoId" to patidoId,
+            "partidoId" to partidoId,
             "competicionId" to competicionId,
             "equipoLocal" to equipoLocal,
             "equipoVisitante" to equipoVisitante,

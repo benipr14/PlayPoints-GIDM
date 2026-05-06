@@ -4,11 +4,14 @@ import com.example.aplicacion.data.model.LigaAmistosa
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlin.random.Random
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 class LigaAmistosaRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     private val ligasCollection = firestore.collection("ligas_amistosas")
+    private val miembroRepository = MiembroRepository(firestore)
 
     fun guardarLigaConIdSecuencial(
         nombre: String,
@@ -80,6 +83,54 @@ class LigaAmistosaRepository(
                 onResult(Result.success(ligas))
             }
             .addOnFailureListener { error -> onResult(Result.failure(error)) }
+    }
+
+    fun obtenerLigasPorNombreMiembro(
+        nombreMiembro: String,
+        onResult: (Result<List<LigaAmistosa>>) -> Unit
+    ) {
+        val nombreBuscado = nombreMiembro.trim()
+        if (nombreBuscado.isBlank()) {
+            onResult(Result.success(emptyList()))
+            return
+        }
+
+        obtenerTodasLasLigas { resultadoLigas ->
+            resultadoLigas
+                .onSuccess { ligas ->
+                    if (ligas.isEmpty()) {
+                        onResult(Result.success(emptyList()))
+                        return@onSuccess
+                    }
+
+                    val ligasCoincidentes = mutableListOf<LigaAmistosa>()
+                    val pendientes = AtomicInteger(ligas.size)
+                    val resultadoEmitido = AtomicBoolean(false)
+
+                    ligas.forEach { liga ->
+                        val ligaId = liga.id.ifBlank { liga.ligaId }
+                        miembroRepository.obtenerTodosLosMiembros(ligaId) { miembrosResult ->
+                            miembrosResult.onSuccess { miembros ->
+                                val pertenece = miembros.any { miembro ->
+                                    miembro.nombre.trim().equals(nombreBuscado, ignoreCase = true)
+                                }
+                                if (pertenece) {
+                                    ligasCoincidentes.add(liga)
+                                }
+                            }
+
+                            if (pendientes.decrementAndGet() == 0 && resultadoEmitido.compareAndSet(false, true)) {
+                                onResult(
+                                    Result.success(
+                                        ligasCoincidentes.sortedBy { it.nombre.lowercase() }
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+                .onFailure { error -> onResult(Result.failure(error)) }
+        }
     }
 
     private fun generarCodigoUnico(codigosExistentes: Set<String>): String {

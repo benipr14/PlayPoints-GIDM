@@ -32,7 +32,7 @@ class ApuestaRepository(
 
                     val apuesta = Apuesta(
                         id = idSugerido,
-                        patidoId = "partido$numeroSiguiente",
+                        partidoId = "partido$numeroSiguiente",
                         competicionId = "competicion1",
                         equipoLocal = "Real Madrid",
                         equipoVisitante = "Barcelona",
@@ -90,7 +90,7 @@ class ApuestaRepository(
     private fun DocumentSnapshot.toApuesta(): Apuesta {
         return Apuesta(
             id = id,
-            patidoId = leerTextoSeguro("patidoId"),
+            partidoId = leerTextoSeguro("partidoId"),
             competicionId = leerTextoSeguro("competicionId"),
             equipoLocal = leerTextoSeguro("equipoLocal"),
             equipoVisitante = leerTextoSeguro("equipoVisitante"),

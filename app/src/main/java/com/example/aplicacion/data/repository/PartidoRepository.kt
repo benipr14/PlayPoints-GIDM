@@ -81,6 +81,22 @@ class PartidoRepository(
             .addOnFailureListener { error -> onResult(Result.failure(error)) }
     }
 
+    fun obtenerPartidosPorCompeticionId(
+        competicionId: String,
+        onResult: (Result<List<Partido>>) -> Unit
+    ) {
+        partidosCollection
+            .whereEqualTo("competicionId", competicionId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val partidos = snapshot.documents.mapNotNull { document ->
+                    runCatching { document.toPartido() }.getOrNull()
+                }
+                onResult(Result.success(partidos))
+            }
+            .addOnFailureListener { error -> onResult(Result.failure(error)) }
+    }
+
     private fun DocumentSnapshot.toPartido(): Partido {
         return Partido(
             id = id,

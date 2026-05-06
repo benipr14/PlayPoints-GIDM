@@ -1,25 +1,24 @@
 package com.example.aplicacion
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.composable
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.example.aplicacion.data.repository.ApuestaRepository
 import com.example.aplicacion.data.repository.CompeticionRepository
 import com.example.aplicacion.data.model.Usuario
+import com.example.aplicacion.data.model.Apuesta
 import com.example.aplicacion.data.repository.EquipoRepository
 import com.example.aplicacion.data.repository.LigaAmistosaRepository
 import com.example.aplicacion.data.repository.LimpiezaFirestoreRepository
@@ -45,9 +44,12 @@ class MainActivity : ComponentActivity() {
     private val mensajePantallaRepository = MensajePantallaRepository()
     private val limpiezaFirestoreRepository = LimpiezaFirestoreRepository()
     private var uiMessage by mutableStateOf("Pulsa un botón para continuar")
+    private var usuariosLecturaCompletaTexto by mutableStateOf("Lectura completa de usuarios: (sin datos)")
+    private var usuariosLecturaFiltradaTexto by mutableStateOf("Lectura filtrada (cooldownActivo=true): (sin datos)")
     private var isLoading by mutableStateOf(false)
     private var ultimoUsuarioId by mutableStateOf<String?>(null)
     private var ultimaLigaId by mutableStateOf<String?>(null)
+    private var usuarioActual by mutableStateOf("usuario1")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,109 +60,164 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Button(
-                            onClick = { ejecutarCasoUsoUsuarios() },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = if (isLoading) "Guardando..." else "Agregar usuario")
-                        }
+                            // Use Navigation Compose to handle navigation between screens
+                                    val navController = androidx.navigation.compose.rememberNavController()
+                                    // Create ViewModels using ViewModelProvider so they survive config changes
+                                    val registrationViewModel = remember {
+                                        androidx.lifecycle.ViewModelProvider(
+                                            this@MainActivity,
+                                            com.example.aplicacion.ui.viewmodel.RegistrationViewModelFactory(usuarioRepository, ::fechaActualTexto)
+                                        ).get(com.example.aplicacion.ui.viewmodel.RegistrationViewModel::class.java)
+                                    }
 
-                        Button(
-                            onClick = { agregarCooldownDosMinutos() },
-                            enabled = !isLoading && ultimoUsuarioId != null
-                        ) {
-                            Text(text = "Añadir cooldown 2 min")
-                        }
+                                    val loginViewModel = remember {
+                                        androidx.lifecycle.ViewModelProvider(
+                                            this@MainActivity,
+                                            com.example.aplicacion.ui.viewmodel.LoginViewModelFactory(usuarioRepository)
+                                        ).get(com.example.aplicacion.ui.viewmodel.LoginViewModel::class.java)
+                                    }
 
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoLigasAmistosas() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = "Agregar liga amistosa")
-                        }
-
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoApuestas() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading && ultimoUsuarioId != null
-                        ) {
-                            Text(text = "Agregar apuesta")
-                        }
-
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoCompeticiones() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = "Agregar competición")
-                        }
-
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoPartidos() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = "Agregar partido")
-                        }
-
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoEquipos() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = "Agregar equipo")
-                        }
-
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoMiembros() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = "Agregar miembro")
-                        }
-
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoMensajesPantalla() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = "Agregar mensaje pantalla")
-                        }
-
-                        Button(
-                            onClick = {
-                                runCatching { ejecutarCasoUsoVaciarBaseDatos() }
-                                    .onFailure { error -> uiMessage = "Error: ${error.message}" }
-                            },
-                            enabled = !isLoading
-                        ) {
-                            Text(text = "Vaciar base de datos")
-                        }
-
-                        Text(text = uiMessage)
-                    }
+                                    androidx.navigation.compose.NavHost(navController = navController, startDestination = "register") {
+                                        composable("register") {
+                                            com.example.aplicacion.ui.screens.RegistrationScreen(
+                                                viewModel = registrationViewModel,
+                                                onRegistered = {
+                                                    usuarioActual = registrationViewModel.uiState.value.nombre
+                                                    navController.navigate("home")
+                                                },
+                                                onGoToLogin = { navController.navigate("login") }
+                                            )
+                                        }
+                                        composable("login") {
+                                            com.example.aplicacion.ui.screens.LoginScreen(
+                                                viewModel = loginViewModel,
+                                                onLoginSuccess = {
+                                                    usuarioActual = loginViewModel.uiState.value.nombre
+                                                    navController.navigate("home")
+                                                },
+                                                onGoToRegister = { navController.navigate("register") }
+                                            )
+                                        }
+                                        composable("home") {
+                                            com.example.aplicacion.ui.screens.HomeScreen(
+                                                onNavigateToPerfil = { navController.navigate("perfil") },
+                                                onNavigateToFutbol = { navController.navigate("futbol_competiciones") },
+                                                onNavigateToMisApuestas = { navController.navigate("mis_apuestas") },
+                                                onNavigateToBuscador = { navController.navigate("buscador") },
+                                                onNavigateToLigasAmistosas = { navController.navigate("ligas_amistosas") }
+                                            )
+                                        }
+                                        composable("ligas_amistosas") {
+                                            com.example.aplicacion.ui.screens.LigasAmistosasScreen(
+                                                ligaAmistosaRepository = ligaAmistosaRepository,
+                                                usuarioActual = usuarioActual,
+                                                onNavigateToLigaMiembros = { ligaId, ligaNombre ->
+                                                    navController.navigate(
+                                                        "liga_miembros/${Uri.encode(ligaId)}/${Uri.encode(ligaNombre)}"
+                                                    )
+                                                },
+                                                onNavigateBack = { navController.popBackStack() },
+                                                onNavigateToHome = { navController.navigate("home") },
+                                                onNavigateToPerfil = { navController.navigate("perfil") },
+                                                onNavigateToBuscador = { navController.navigate("buscador") },
+                                                onNavigateToMisApuestas = { navController.navigate("mis_apuestas") }
+                                            )
+                                        }
+                                        composable(
+                                            route = "liga_miembros/{ligaId}/{ligaNombre}",
+                                            arguments = listOf(
+                                                navArgument("ligaId") { type = NavType.StringType },
+                                                navArgument("ligaNombre") { type = NavType.StringType }
+                                            )
+                                        ) { backStackEntry ->
+                                            val ligaId = backStackEntry.arguments?.getString("ligaId").orEmpty()
+                                            val ligaNombre = backStackEntry.arguments?.getString("ligaNombre").orEmpty()
+                                            com.example.aplicacion.ui.screens.LigaMiembrosScreen(
+                                                miembroRepository = miembroRepository,
+                                                ligaId = ligaId,
+                                                ligaNombre = ligaNombre,
+                                                onNavigateBack = { navController.popBackStack() },
+                                                onNavigateToHome = { navController.navigate("home") },
+                                                onNavigateToPerfil = { navController.navigate("perfil") },
+                                                onNavigateToMisApuestas = { navController.navigate("mis_apuestas") }
+                                            )
+                                        }
+                                        composable("futbol_competiciones") {
+                                            com.example.aplicacion.ui.screens.FootballCompetitionsScreen(
+                                                competicionRepository = competicionRepository,
+                                                usuarioRepository = usuarioRepository,
+                                                usuarioActual = usuarioActual,
+                                                onNavigateBack = { navController.popBackStack() },
+                                                onNavigateToPartidos = { competicionId, competicionNombre ->
+                                                    navController.navigate(
+                                                        "partidos_competicion/${Uri.encode(competicionId)}/${Uri.encode(competicionNombre)}"
+                                                    )
+                                                },
+                                                onNavigateToHome = { navController.navigate("home") },
+                                                onNavigateToPerfil = { navController.navigate("perfil") },
+                                                onNavigateToMisApuestas = { navController.navigate("mis_apuestas") }
+                                            )
+                                        }
+                                        composable(
+                                            route = "partidos_competicion/{competicionId}/{competicionNombre}",
+                                            arguments = listOf(
+                                                navArgument("competicionId") { type = NavType.StringType },
+                                                navArgument("competicionNombre") { type = NavType.StringType }
+                                            )
+                                        ) { backStackEntry ->
+                                             val competicionId = backStackEntry.arguments?.getString("competicionId").orEmpty()
+                                             val competicionNombre = backStackEntry.arguments?.getString("competicionNombre").orEmpty()
+                                             com.example.aplicacion.ui.screens.FootballMatchesScreen(
+                                                 partidoRepository = partidoRepository,
+                                                 apuestaRepository = apuestaRepository,
+                                                 mensajePantallaRepository = mensajePantallaRepository,
+                                                 usuarioRepository = usuarioRepository,
+                                                 competicionId = competicionId,
+                                                 competicionNombre = competicionNombre,
+                                                 usuarioActual = usuarioActual,
+                                                 fechaActualTexto = ::fechaActualTexto,
+                                                 onNavigateBack = { navController.popBackStack() },
+                                                 onNavigateToHome = { navController.navigate("home") },
+                                                 onNavigateToPerfil = { navController.navigate("perfil") },
+                                                 onNavigateToMisApuestas = { navController.navigate("mis_apuestas") }
+                                             )
+                                        }
+                                        composable("mis_apuestas") {
+                                            com.example.aplicacion.ui.screens.MisApuestasScreen(
+                                                usuarioActual = usuarioActual,
+                                                apuestaRepository = apuestaRepository,
+                                                usuarioRepository = usuarioRepository,
+                                                onNavigateBack = { navController.popBackStack() },
+                                                onNavigateToHome = { navController.navigate("home") },
+                                                onNavigateToBuscador = { navController.navigate("buscador") },
+                                                onNavigateToLigasAmistosas = { navController.navigate("ligas_amistosas") },
+                                                onNavigateToPerfil = { navController.navigate("perfil") }
+                                            )
+                                        }
+                                        composable("perfil") {
+                                            com.example.aplicacion.ui.screens.ProfileScreen(
+                                                usuarioActual = usuarioActual,
+                                                onNavigateToHome = { navController.navigate("home") },
+                                                onNavigateToBuscador = { navController.navigate("buscador") },
+                                                onNavigateToLigasAmistosas = { navController.navigate("ligas_amistosas") },
+                                                onNavigateToMisApuestas = { navController.navigate("mis_apuestas") }
+                                            )
+                                        }
+                                        composable("buscador") {
+                                            com.example.aplicacion.ui.screens.SearchScreen(
+                                                partidoRepository = partidoRepository,
+                                                competicionRepository = competicionRepository,
+                                                onNavigateToPartidos = { competicionId, competicionNombre ->
+                                                    navController.navigate("partidos_competicion/${Uri.encode(competicionId)}/${Uri.encode(competicionNombre)}")
+                                                },
+                                                onNavigateBack = { navController.popBackStack() },
+                                                onNavigateToHome = { navController.navigate("home") },
+                                                onNavigateToPerfil = { navController.navigate("perfil") },
+                                                onNavigateToLigasAmistosas = { navController.navigate("ligas_amistosas") },
+                                                onNavigateToMisApuestas = { navController.navigate("mis_apuestas") }
+                                            )
+                                        }
+                                    }
                 }
             }
         }
@@ -201,7 +258,7 @@ class MainActivity : ComponentActivity() {
             role = "user",
             fechaCreacion = fechaCreacionActual,
             cooldownHasta = "6 de abril de 2026 a las 6:14:47 p.m. UTC+2",
-            cooldownActivo = true,
+            cooldownActivo = false,
             puntos = 1200
         )
 
@@ -211,20 +268,32 @@ class MainActivity : ComponentActivity() {
                     ultimoUsuarioId = documentIdGenerado
                     usuarioRepository.obtenerTodosLosUsuarios { lecturaCompleta ->
                         lecturaCompleta
-                            .onSuccess {
+                            .onSuccess { usuariosCompletos ->
+                                usuariosLecturaCompletaTexto = construirResumenUsuarios(
+                                    titulo = "Lectura completa de usuarios",
+                                    usuarios = usuariosCompletos
+                                )
                                 usuarioRepository.obtenerUsuariosConCooldownActivo(true) { lecturaFiltrada ->
                                     lecturaFiltrada
-                                        .onSuccess {
+                                        .onSuccess { usuariosFiltrados ->
+                                            usuariosLecturaFiltradaTexto = construirResumenUsuarios(
+                                                titulo = "Lectura filtrada (cooldownActivo=true)",
+                                                usuarios = usuariosFiltrados
+                                            )
                                             isLoading = false
                                             uiMessage = "Usuario agregado correctamente: $documentIdGenerado"
                                         }
                                         .onFailure { error ->
+                                            usuariosLecturaFiltradaTexto =
+                                                "Lectura filtrada (cooldownActivo=true): error -> ${error.message}"
                                             isLoading = false
                                             uiMessage = "Error: ${error.message}"
                                         }
                                 }
                             }
                             .onFailure { error ->
+                                usuariosLecturaCompletaTexto =
+                                    "Lectura completa de usuarios: error -> ${error.message}"
                                 isLoading = false
                                 uiMessage = "Error: ${error.message}"
                             }
@@ -235,6 +304,19 @@ class MainActivity : ComponentActivity() {
                     uiMessage = "Error: ${error.message}"
                 }
         }
+    }
+
+    private fun construirResumenUsuarios(titulo: String, usuarios: List<Usuario>): String {
+        if (usuarios.isEmpty()) {
+            return "$titulo: 0 usuarios"
+        }
+
+        val detalle = usuarios.joinToString(separator = " | ") { usuario ->
+            val idVisible = usuario.usuarioId.ifBlank { usuario.id }
+            "$idVisible (${usuario.nombre}, puntos=${usuario.puntos}, cooldown=${usuario.cooldownActivo})"
+        }
+
+        return "$titulo: ${usuarios.size} usuarios -> $detalle"
     }
 
     private fun agregarCooldownDosMinutos() {
@@ -250,8 +332,39 @@ class MainActivity : ComponentActivity() {
         usuarioRepository.actualizarCooldownUsuario(usuarioId, cooldownHasta) { resultado ->
             resultado
                 .onSuccess {
-                    isLoading = false
-                    uiMessage = "Cooldown aplicado correctamente a $usuarioId"
+                    usuarioRepository.obtenerTodosLosUsuarios { lecturaCompleta ->
+                        lecturaCompleta
+                            .onSuccess { usuariosCompletos ->
+                                usuariosLecturaCompletaTexto = construirResumenUsuarios(
+                                    titulo = "Lectura completa de usuarios",
+                                    usuarios = usuariosCompletos
+                                )
+
+                                usuarioRepository.obtenerUsuariosConCooldownActivo(true) { lecturaFiltrada ->
+                                    lecturaFiltrada
+                                        .onSuccess { usuariosFiltrados ->
+                                            usuariosLecturaFiltradaTexto = construirResumenUsuarios(
+                                                titulo = "Lectura filtrada (cooldownActivo=true)",
+                                                usuarios = usuariosFiltrados
+                                            )
+                                            isLoading = false
+                                            uiMessage = "Cooldown aplicado correctamente a $usuarioId"
+                                        }
+                                        .onFailure { error ->
+                                            usuariosLecturaFiltradaTexto =
+                                                "Lectura filtrada (cooldownActivo=true): error -> ${error.message}"
+                                            isLoading = false
+                                            uiMessage = "Error: ${error.message}"
+                                        }
+                                }
+                            }
+                            .onFailure { error ->
+                                usuariosLecturaCompletaTexto =
+                                    "Lectura completa de usuarios: error -> ${error.message}"
+                                isLoading = false
+                                uiMessage = "Error: ${error.message}"
+                            }
+                    }
                 }
                 .onFailure { error ->
                     isLoading = false
@@ -317,6 +430,19 @@ class MainActivity : ComponentActivity() {
 
         isLoading = true
         val fechaApuesta = fechaActualTexto()
+
+        val apuestaEjemplo = Apuesta(
+            partidoId = "partido1",
+            competicionId = "competicion1",
+            equipoLocal = "Real Madrid",
+            equipoVisitante = "Barcelona",
+            seleccion = "local",
+            cuota = 1.85,
+            cantidad = 10,
+            estado = "pendiente",
+            fechaApuesta = fechaApuesta,
+            ligaID = ""
+        )
 
         apuestaRepository.guardarApuestaConIdSecuencial(usuarioId, fechaApuesta) { escritura ->
             escritura
@@ -572,4 +698,6 @@ class MainActivity : ComponentActivity() {
                 }
         }
     }
+
+    // Screen composables have been moved to `ui.screens.AuthScreens` and navigation is handled with Navigation Compose.
 }

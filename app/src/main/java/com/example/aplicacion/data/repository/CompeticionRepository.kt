@@ -72,6 +72,22 @@ class CompeticionRepository(
             .addOnFailureListener { error -> onResult(Result.failure(error)) }
     }
 
+    fun obtenerCompeticionesPorDeporte(
+        deporte: String,
+        onResult: (Result<List<Competicion>>) -> Unit
+    ) {
+        competicionesCollection
+            .whereEqualTo("deporte", deporte)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val competiciones = snapshot.documents.mapNotNull { document ->
+                    runCatching { document.toCompeticion() }.getOrNull()
+                }
+                onResult(Result.success(competiciones))
+            }
+            .addOnFailureListener { error -> onResult(Result.failure(error)) }
+    }
+
     private fun DocumentSnapshot.toCompeticion(): Competicion {
         return Competicion(
             id = id,

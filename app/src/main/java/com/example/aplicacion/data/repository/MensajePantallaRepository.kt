@@ -3,6 +3,7 @@ package com.example.aplicacion.data.repository
 import com.example.aplicacion.data.model.MensajePantalla
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlin.random.Random
 
 class MensajePantallaRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -51,6 +52,30 @@ class MensajePantallaRepository(
                 onResult(Result.success(mensajes))
             }
             .addOnFailureListener { error -> onResult(Result.failure(error)) }
+    }
+
+    fun obtenerMensajeAleatorio(onResult: (Result<MensajePantalla>) -> Unit) {
+        obtenerTodosLosMensajes { resultado ->
+            resultado
+                .onSuccess { mensajes ->
+                    if (mensajes.isEmpty()) {
+                        onResult(
+                            Result.success(
+                                MensajePantalla(
+                                    mensajeId = "fallback",
+                                    texto = "Recuerda jugar con responsabilidad."
+                                )
+                            )
+                        )
+                    } else {
+                        val mensaje = mensajes[Random.nextInt(mensajes.size)]
+                        onResult(Result.success(mensaje))
+                    }
+                }
+                .onFailure { error ->
+                    onResult(Result.failure(error))
+                }
+        }
     }
 
     fun obtenerMensajesPorId(

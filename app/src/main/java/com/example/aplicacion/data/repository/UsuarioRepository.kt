@@ -65,8 +65,51 @@ class UsuarioRepository(
             .addOnFailureListener { error -> onResult(Result.failure(error)) }
     }
 
+    fun actualizarPuntosUsuario(
+        documentId: String,
+        nuevosPuntos: Long,
+        onResult: (Result<Unit>) -> Unit
+    ) {
+        usuariosCollection
+            .document(documentId)
+            .update(
+                mapOf(
+                    "puntos" to nuevosPuntos
+                )
+            )
+            .addOnSuccessListener { onResult(Result.success(Unit)) }
+            .addOnFailureListener { error -> onResult(Result.failure(error)) }
+    }
+
     fun obtenerTodosLosUsuarios(onResult: (Result<List<Usuario>>) -> Unit) {
         usuariosCollection
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val usuarios = snapshot.documents.mapNotNull { document -> document.toUsuario() }
+                onResult(Result.success(usuarios))
+            }
+            .addOnFailureListener { error -> onResult(Result.failure(error)) }
+    }
+
+    fun buscarUsuarioPorEmail(email: String, onResult: (Result<List<Usuario>>) -> Unit) {
+        usuariosCollection
+            .whereEqualTo("email", email)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val usuarios = snapshot.documents.mapNotNull { document -> document.toUsuario() }
+                onResult(Result.success(usuarios))
+            }
+            .addOnFailureListener { error -> onResult(Result.failure(error)) }
+    }
+
+    fun buscarUsuarioPorNombreYPassword(
+        nombre: String,
+        password: String,
+        onResult: (Result<List<Usuario>>) -> Unit
+    ) {
+        usuariosCollection
+            .whereEqualTo("nombre", nombre)
+            .whereEqualTo("password", password)
             .get()
             .addOnSuccessListener { snapshot ->
                 val usuarios = snapshot.documents.mapNotNull { document -> document.toUsuario() }
@@ -96,12 +139,14 @@ class UsuarioRepository(
             nombre = getString("nombre") ?: "",
             email = getString("email") ?: "",
             role = getString("role") ?: "user",
+            password = getString("password") ?: "",
             fechaCreacion = leerTextoOFecha("fechaCreacion"),
             cooldownHasta = leerTextoOFecha("cooldownHasta"),
             cooldownActivo = getBoolean("cooldownActivo") ?: false,
             puntos = leerPuntos("puntos")
         )
     }
+
 
     private fun DocumentSnapshot.leerTextoOFecha(campo: String): String {
         val valor = get(campo)
